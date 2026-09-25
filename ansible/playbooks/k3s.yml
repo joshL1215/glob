@@ -1,0 +1,72 @@
+- name: k3s control plane
+  hosts: servers
+
+  tasks:
+    - name: Fetch k3s installer
+      ansible.builtin.get_url:
+        url: https://get.k3s.io
+        dest: /usr/local/bin/k3s-install.sh
+        mode: "0755"
+
+    - name: Install k3s server
+      ansible.builtin.command: /usr/local/bin/k3s-install.sh
+      environment:
+        INSTALL_K3S_VERSION: "{{ k3s_version }}"
+        INSTALL_K3S_EXEC: >-
+          server
+          --node-ip {{ ansible_host }}
+          --advertise-address {{ ansible_host }}
+          --tls-san {{ ansible_host }}
+          --flannel-backend vxlan
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Wait for the API server
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 6443
+        timeout: 180
+
+    - name: Read the node join token
+      ansible.builtin.slurp:
+        src: /var/lib/rancher/k3s/server/node-token
+      register: k3s_token_file
+
+    - name: Publish the token for the agent play
+      ansible.builtin.set_fact:
+        k3s_node_token: "{{ k3s_token_file.content | b64decode | trim }}"
+
+- name: k3s data plane
+  hosts: agents
+  vars:
+    k3s_server: "{{ groups['servers'][0] }}"
+
+  tasks:
+    - name: Fetch k3s installer
+      ansible.builtin.get_url:
+        url: https://get.k3s.io
+        dest: /usr/local/bin/k3s-install.sh
+        mode: "0755"
+
+    - name: Install k3s agent
+      ansible.builtin.command: /usr/local/bin/k3s-install.sh
+      environment:
+        INSTALL_K3S_VERSION: "{{ k3s_version }}"
+        K3S_URL: "https://{{ hostvars[k3s_server].ansible_host }}:6443"
+        K3S_TOKEN: "{{ hostvars[k3s_server].k3s_node_token }}"
+        INSTALL_K3S_EXEC: "agent --node-ip {{ ansible_host }}"
+      args:
+        creates: /usr/local/bin/k3s
+
+- name: Cluster status
+  hosts: servers
+
+  tasks:
+    - name: List nodes
+      ansible.builtin.command: k3s kubectl get nodes -o wide
+      changed_when: false
+      register: k3s_nodes
+
+    - name: Show nodes
+      ansible.builtin.debug:
+        var: k3s_nodes.stdout_lines

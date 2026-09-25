@@ -2,6 +2,7 @@ lab:
   vars:
     lab_cidr: 10.77.0.0/24
     lab_domain: lab.internal
+    k3s_version: v1.37.0+k3s1
   children:
     servers:
       hosts:
