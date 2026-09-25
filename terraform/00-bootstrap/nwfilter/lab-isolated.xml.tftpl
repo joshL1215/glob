@@ -48,7 +48,7 @@
 
   <!-- 300 — lab-to-lab -->
   <rule action='accept' direction='out' priority='300'>
-    <all dstipaddr='${lab_network}' dstipmask='${lab_netmask}'/>
+    <all dstipaddr='${lab_network}' dstipmask='${lab_netmask}' state='NEW,ESTABLISHED,RELATED'/>
   </rule>
 
   <!-- 400 — all remaining private space. -->
