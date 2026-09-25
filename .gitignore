@@ -9,3 +9,6 @@ override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
+
+# claude code — machine-local settings and permission allowlists
+.claude/settings.local.json
