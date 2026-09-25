@@ -1,0 +1,59 @@
+<!--
+  lab-isolated — per-VM egress filter, enforced by the HOST on each guest's
+  tap device. The guest cannot read or disable these rules, even as root.
+
+    100  accept  DNS to the gateway
+    200  drop    anything else aimed at the host
+    300  accept  lab-to-lab
+    400  drop    every other private range (RFC1918 + CGNAT + link-local)
+      -  accept  fallthrough == the public internet
+
+  Deliberately bans ALL private space to allow compatibility with other Wifi networks
+
+  Managed by terraform/00-bootstrap/nwfilter.tf, do not edit via virsh.
+-->
+
+<filter name='${filter_name}' chain='root'>
+
+  <!-- Pin each guest to its assigned identity. $IP is supplied per-domain
+       via filter_ref parameters; $MAC is filled in by libvirt. -->
+  <filterref filter='no-mac-spoofing'/>
+  <filterref filter='no-arp-spoofing'/>
+  <filterref filter='no-ip-spoofing'/>
+
+  <!-- 100 — DNS to the gateway -->
+  <rule action='accept' direction='out' priority='100'>
+    <udp dstipaddr='${gateway_ip}' dstipmask='255.255.255.255' dstportstart='53'/>
+  </rule>
+  <rule action='accept' direction='out' priority='100'>
+    <tcp dstipaddr='${gateway_ip}' dstipmask='255.255.255.255' dstportstart='53'/>
+  </rule>
+
+  <!-- 200 — everything else on host off limits -->
+  <rule action='drop' direction='out' priority='200'>
+    <ip dstipaddr='${gateway_ip}' dstipmask='255.255.255.255'/>
+  </rule>
+
+  <!-- 300 — lab-to-lab -->
+  <rule action='accept' direction='out' priority='300'>
+    <ip dstipaddr='${lab_network}' dstipmask='${lab_netmask}'/>
+  </rule>
+
+  <!-- 400 — all remaining private space. -->
+  <rule action='drop' direction='out' priority='400'>          <!-- CGNAT -->
+    <ip dstipaddr='100.64.0.0' dstipmask='255.192.0.0'/>
+  </rule>
+  <rule action='drop' direction='out' priority='400'>          <!-- RFC1918 -->
+    <ip dstipaddr='10.0.0.0' dstipmask='255.0.0.0'/>
+  </rule>
+  <rule action='drop' direction='out' priority='400'>          <!-- RFC1918: docker0, br-* -->
+    <ip dstipaddr='172.16.0.0' dstipmask='255.240.0.0'/>
+  </rule>
+  <rule action='drop' direction='out' priority='400'>          <!-- RFC1918: home routers, virbr0 -->
+    <ip dstipaddr='192.168.0.0' dstipmask='255.255.0.0'/>
+  </rule>
+  <rule action='drop' direction='out' priority='400'>          <!-- link-local / cloud metadata -->
+    <ip dstipaddr='169.254.0.0' dstipmask='255.255.0.0'/>
+  </rule>
+
+</filter>

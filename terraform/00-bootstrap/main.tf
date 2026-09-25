@@ -1,4 +1,6 @@
 terraform {
+    required_version = ">= 1.4" 
+
     required_providers {
         libvirt = {
             source  = "dmacvicar/libvirt"
@@ -12,7 +14,19 @@ provider "libvirt" {
 }
 
 variable "lab_cidr" {
-    default = "10.77.0.0/24"
+    description = "Address space for the lab virtual network, may need change if overarching network overlaps with this"
+    default     = "10.77.0.0/24"
+}
+
+variable "lab_domain" {
+    description = "Internal DNS suffix."
+    default     = "lab.internal"
+}
+
+variable "dns_forwarders" {
+    description = "Public Cloudflare and Quad9 DNS."
+    type        = list(string)
+    default     = ["1.1.1.1", "9.9.9.9"]
 }
 
 resource "libvirt_network" "lab" {
@@ -30,8 +44,15 @@ resource "libvirt_network" "lab" {
         }
     ]
 
+    # Use public DNS resolvers
     dns = {
-        enable = "yes"
+        enable     = "yes"
+        forwarders = [for addr in var.dns_forwarders : { addr = addr }]
+    }
+
+    domain = {
+        name       = var.lab_domain
+        local_only = "yes"
     }
 }
 
@@ -56,3 +77,10 @@ output "network_name"     { value = libvirt_network.lab.name }
 output "base_volume_path" { value = libvirt_volume.base.path }
 output "lab_cidr"         { value = var.lab_cidr }
 output "gateway_ip"       { value = cidrhost(var.lab_cidr, 1) }
+output "lab_domain"       { value = var.lab_domain }
+
+output "nwfilter_name" {
+    description = "Attach to every guest NIC via devices.interfaces[].filter_ref."
+    value       = local.nwfilter_name
+    depends_on  = [terraform_data.lab_isolated]
+}
