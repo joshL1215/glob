@@ -1,0 +1,40 @@
+#cloud-config
+hostname: ${hostname}
+fqdn: ${fqdn}
+
+users:
+  - name: ${admin_user}
+    groups: [sudo]
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    lock_passwd: true
+    ssh_authorized_keys:
+      - ${ssh_key}
+
+ssh_pwauth: false
+disable_root: true
+
+write_files:
+  - path: /etc/ssh/sshd_config.d/99-lab.conf
+    permissions: "0644"
+    content: |
+      PasswordAuthentication no
+      PermitRootLogin no
+      KbdInteractiveAuthentication no
+
+  - path: /etc/hosts
+    append: true
+    content: |
+      ${indent(6, join("\n", etc_hosts))}
+
+package_update: true
+packages:
+  - ufw
+
+runcmd:
+  - [ufw, --force, reset]
+  - [ufw, default, deny, incoming]
+  - [ufw, default, allow, outgoing]
+  - [ufw, allow, from, "${lab_cidr}"]
+  - [ufw, --force, enable]
+  - [systemctl, try-restart, ssh.socket, ssh.service]
