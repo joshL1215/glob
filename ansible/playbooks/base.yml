@@ -1,0 +1,46 @@
+- name: Base configuration for lab nodes
+  hosts: lab
+
+  tasks:
+    - name: Install baseline packages
+      ansible.builtin.apt:
+        name:
+          - qemu-guest-agent
+          - ufw
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Enable qemu-guest-agent
+      ansible.builtin.systemd_service:
+        name: qemu-guest-agent
+        enabled: true
+        state: started
+
+    - name: Record lab peers in /etc/hosts
+      ansible.builtin.blockinfile:
+        path: /etc/hosts
+        marker: "# {mark} ansible: lab peers"
+        block: |
+          {% for host in groups['lab'] | sort %}
+          {{ hostvars[host].ansible_host }} {{ host }}.{{ lab_domain }} {{ host }}
+          {% endfor %}
+
+    - name: Deny incoming by default
+      community.general.ufw:
+        direction: incoming
+        policy: deny
+
+    - name: Allow outgoing by default
+      community.general.ufw:
+        direction: outgoing
+        policy: allow
+
+    - name: Allow all traffic from the lab subnet
+      community.general.ufw:
+        rule: allow
+        src: "{{ lab_cidr }}"
+
+    - name: Enable ufw
+      community.general.ufw:
+        state: enabled
