@@ -14,6 +14,7 @@
 -->
 
 <filter name='${filter_name}' chain='root'>
+  <uuid>${filter_uuid}</uuid>
 
   <!-- Pin each guest to its assigned identity. $IP is supplied per-domain
        via filter_ref parameters; $MAC is filled in by libvirt. -->
@@ -29,31 +30,42 @@
     <tcp dstipaddr='${gateway_ip}' dstipmask='255.255.255.255' dstportstart='53'/>
   </rule>
 
-  <!-- 200 — everything else on host off limits -->
+  <!-- 150 — replies to connections the host opened, so host->guest ssh works -->
+  <rule action='accept' direction='out' priority='150'>
+    <tcp dstipaddr='${gateway_ip}' dstipmask='255.255.255.255' state='ESTABLISHED'/>
+  </rule>
+  <rule action='accept' direction='out' priority='150'>
+    <udp dstipaddr='${gateway_ip}' dstipmask='255.255.255.255' state='ESTABLISHED'/>
+  </rule>
+  <rule action='accept' direction='out' priority='150'>
+    <icmp dstipaddr='${gateway_ip}' dstipmask='255.255.255.255' state='ESTABLISHED,RELATED'/>
+  </rule>
+
+  <!-- 200 — guest may not START a connection to the host -->
   <rule action='drop' direction='out' priority='200'>
-    <ip dstipaddr='${gateway_ip}' dstipmask='255.255.255.255'/>
+    <all dstipaddr='${gateway_ip}' dstipmask='255.255.255.255'/>
   </rule>
 
   <!-- 300 — lab-to-lab -->
   <rule action='accept' direction='out' priority='300'>
-    <ip dstipaddr='${lab_network}' dstipmask='${lab_netmask}'/>
+    <all dstipaddr='${lab_network}' dstipmask='${lab_netmask}'/>
   </rule>
 
   <!-- 400 — all remaining private space. -->
   <rule action='drop' direction='out' priority='400'>          <!-- CGNAT -->
-    <ip dstipaddr='100.64.0.0' dstipmask='255.192.0.0'/>
+    <all dstipaddr='100.64.0.0' dstipmask='255.192.0.0'/>
   </rule>
   <rule action='drop' direction='out' priority='400'>          <!-- RFC1918 -->
-    <ip dstipaddr='10.0.0.0' dstipmask='255.0.0.0'/>
+    <all dstipaddr='10.0.0.0' dstipmask='255.0.0.0'/>
   </rule>
   <rule action='drop' direction='out' priority='400'>          <!-- RFC1918: docker0, br-* -->
-    <ip dstipaddr='172.16.0.0' dstipmask='255.240.0.0'/>
+    <all dstipaddr='172.16.0.0' dstipmask='255.240.0.0'/>
   </rule>
   <rule action='drop' direction='out' priority='400'>          <!-- RFC1918: home routers, virbr0 -->
-    <ip dstipaddr='192.168.0.0' dstipmask='255.255.0.0'/>
+    <all dstipaddr='192.168.0.0' dstipmask='255.255.0.0'/>
   </rule>
   <rule action='drop' direction='out' priority='400'>          <!-- link-local / cloud metadata -->
-    <ip dstipaddr='169.254.0.0' dstipmask='255.255.0.0'/>
+    <all dstipaddr='169.254.0.0' dstipmask='255.255.0.0'/>
   </rule>
 
 </filter>
