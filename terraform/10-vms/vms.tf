@@ -31,8 +31,6 @@ resource "libvirt_cloudinit_disk" "init" {
         fqdn       = "${each.key}.${local.bootstrap.lab_domain}"
         admin_user = var.admin_user
         ssh_key    = trimspace(file(pathexpand(var.ssh_public_key_path)))
-        etc_hosts  = local.etc_hosts
-        lab_cidr   = local.bootstrap.lab_cidr
     })
 
     network_config = templatefile("${path.module}/templates/network-config.yaml.tftpl", {

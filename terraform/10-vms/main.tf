@@ -36,11 +36,4 @@ locals {
     }
 
     lab_prefix = split("/", local.bootstrap.lab_cidr)[1]
-
-    # No DHCP on the lab network, so dnsmasq never learns guest names.
-    # Every node carries every peer instead.
-    etc_hosts = [
-        for name, n in local.nodes_full :
-        "${n.ip} ${name}.${local.bootstrap.lab_domain} ${name}"
-    ]
 }

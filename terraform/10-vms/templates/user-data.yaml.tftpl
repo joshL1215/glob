@@ -22,19 +22,5 @@ write_files:
       PermitRootLogin no
       KbdInteractiveAuthentication no
 
-  - path: /etc/hosts
-    append: true
-    content: |
-      ${indent(6, join("\n", etc_hosts))}
-
-package_update: true
-packages:
-  - ufw
-
 runcmd:
-  - [ufw, --force, reset]
-  - [ufw, default, deny, incoming]
-  - [ufw, default, allow, outgoing]
-  - [ufw, allow, from, "${lab_cidr}"]
-  - [ufw, --force, enable]
   - [systemctl, try-restart, ssh.socket, ssh.service]
