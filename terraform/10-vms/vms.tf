@@ -52,7 +52,7 @@ resource "libvirt_volume" "init" {
     }
 
     target = {
-        format = { type = "raw" }
+        format = { type = "iso" }
     }
 }
 
