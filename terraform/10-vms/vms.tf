@@ -41,6 +41,21 @@ resource "libvirt_cloudinit_disk" "init" {
     })
 }
 
+resource "libvirt_volume" "init" {
+    for_each = local.nodes_full
+
+    name = "${each.key}-cloudinit.iso"
+    pool = var.pool
+
+    create = {
+        content = { url = "file://${libvirt_cloudinit_disk.init[each.key].path}" }
+    }
+
+    target = {
+        format = { type = "raw" }
+    }
+}
+
 resource "libvirt_domain" "node" {
     for_each = local.nodes_full
 
@@ -86,7 +101,7 @@ resource "libvirt_domain" "node" {
                 target    = { dev = "sda", bus = "sata" }
                 read_only = true
                 source = {
-                    file = { file = libvirt_cloudinit_disk.init[each.key].path }
+                    file = { file = libvirt_volume.init[each.key].path }
                 }
             },
         ]
