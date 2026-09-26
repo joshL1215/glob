@@ -54,6 +54,13 @@ resource "libvirt_domain" "node" {
 
     cpu = { mode = "host-passthrough" }
 
+    # Without ACPI the guest halts but can't signal S5 (soft-off), so QEMU never
+    # exits and virsh shutdown appears to hang.
+    features = {
+        acpi = true
+        apic = {}
+    }
+
     os = {
         type         = "hvm"
         boot_devices = [{ dev = "hd" }]
