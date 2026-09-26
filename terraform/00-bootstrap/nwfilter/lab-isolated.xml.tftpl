@@ -46,9 +46,12 @@
     <all dstipaddr='${gateway_ip}' dstipmask='255.255.255.255'/>
   </rule>
 
-  <!-- 300 — lab-to-lab -->
+  <!-- 300 — lab-to-lab, stated in both directions -->
   <rule action='accept' direction='out' priority='300'>
-    <all dstipaddr='${lab_network}' dstipmask='${lab_netmask}' state='NEW,ESTABLISHED,RELATED'/>
+    <all dstipaddr='${lab_network}' dstipmask='${lab_netmask}'/>
+  </rule>
+  <rule action='accept' direction='in' priority='300'>
+    <all srcipaddr='${lab_network}' srcipmask='${lab_netmask}'/>
   </rule>
 
   <!-- 400 — all remaining private space. -->
