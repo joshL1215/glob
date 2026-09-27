@@ -1,0 +1,13 @@
+# HF cache, so the weights survive a restart.
+# local-path provisions on glob despite the taint: the helper pod sets nodeName.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vllm-models
+  namespace: vllm
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 10Gi

@@ -1,0 +1,27 @@
+# Plain manifests: the upstream vllm-stack chart is a multi-model fleet system.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: vllm
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/joshL1215/glob.git
+    targetRevision: main
+    path: k8s/vllm
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: vllm
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
