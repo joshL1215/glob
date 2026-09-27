@@ -1,0 +1,60 @@
+- name: Read the join token from the control plane
+  hosts: servers
+
+  tasks:
+    - name: Read the node join token
+      ansible.builtin.slurp:
+        src: /var/lib/rancher/k3s/server/node-token
+      register: k3s_token_file
+
+    - name: Publish the token for the gpu play
+      ansible.builtin.set_fact:
+        k3s_node_token: "{{ k3s_token_file.content | b64decode | trim }}"
+
+- name: Join glob as the GPU node
+  hosts: gpu_host
+  vars:
+    k3s_server: "{{ groups['servers'][0] }}"
+    lab_bridge: virbr1
+    guest_memory_mib: 8192
+    host_memory_mib: 2560
+    system_reserved_cpu: 4
+
+  tasks:
+    - name: Fetch k3s installer
+      ansible.builtin.get_url:
+        url: https://get.k3s.io
+        dest: /usr/local/bin/k3s-install.sh
+        mode: "0755"
+
+    - name: Install k3s agent
+      ansible.builtin.command: /usr/local/bin/k3s-install.sh
+      environment:
+        INSTALL_K3S_VERSION: "{{ k3s_version }}"
+        K3S_URL: "https://{{ hostvars[k3s_server].ansible_host }}:6443"
+        K3S_TOKEN: "{{ hostvars[k3s_server].k3s_node_token }}"
+        INSTALL_K3S_EXEC: >-
+          agent
+          --node-ip {{ ansible_host }}
+          --flannel-iface {{ lab_bridge }}
+          --node-label nvidia.com/gpu.present=true
+          --node-taint nvidia.com/gpu=true:NoSchedule
+          --default-runtime nvidia
+          --kubelet-arg=system-reserved=cpu={{ system_reserved_cpu }},memory={{ guest_memory_mib + host_memory_mib }}Mi
+          --kubelet-arg=kube-reserved=cpu=1,memory=512Mi
+          --kubelet-arg=eviction-hard=memory.available<500Mi
+      args:
+        creates: /usr/local/bin/k3s
+
+- name: Cluster status
+  hosts: servers
+
+  tasks:
+    - name: List nodes
+      ansible.builtin.command: k3s kubectl get nodes -o wide
+      changed_when: false
+      register: k3s_nodes
+
+    - name: Show nodes
+      ansible.builtin.debug:
+        var: k3s_nodes.stdout_lines

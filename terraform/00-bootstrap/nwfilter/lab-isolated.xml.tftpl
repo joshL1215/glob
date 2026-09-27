@@ -3,6 +3,7 @@
   tap device. The guest cannot read or disable these rules, even as root.
 
     100  accept  DNS to the gateway
+    175  accept  kubelet + flannel vxlan to the host
     200  drop    anything else aimed at the host
     300  accept  lab-to-lab
     400  drop    every other private range (RFC1918 + CGNAT + link-local)
@@ -39,6 +40,14 @@
   </rule>
   <rule action='accept' direction='out' priority='150'>
     <icmp dstipaddr='${gateway_ip}' dstipmask='255.255.255.255' state='ESTABLISHED,RELATED'/>
+  </rule>
+
+  <!-- 175 — kubelet and flannel vxlan, so the host can join as a node -->
+  <rule action='accept' direction='out' priority='175'>
+    <tcp dstipaddr='${gateway_ip}' dstipmask='255.255.255.255' dstportstart='10250'/>
+  </rule>
+  <rule action='accept' direction='out' priority='175'>
+    <udp dstipaddr='${gateway_ip}' dstipmask='255.255.255.255' dstportstart='8472'/>
   </rule>
 
   <!-- 200 — guest may not START a connection to the host -->
