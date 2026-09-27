@@ -1,5 +1,9 @@
 # prometheus-community/kube-prometheus-stack, chart 91.7.0
 
+# CRDs come from k8s/apps/prometheus-operator-crds.yaml instead
+crds:
+  enabled: false
+
 kubeControllerManager:
   enabled: false
 kubeScheduler:

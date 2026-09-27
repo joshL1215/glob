@@ -29,7 +29,11 @@ spec:
 
   syncPolicy:
     automated:
-      prune: true
+      # TEMPORARY: prune disabled while the CRDs move to
+      # prometheus-operator-crds. A mistaken prune here deletes the CRDs and
+      # every ServiceMonitor and Prometheus object with them. Restore to true
+      # once the CRDs are confirmed present and owned by the other app.
+      prune: false
       selfHeal: true
     syncOptions:
       - ServerSideApply=true
