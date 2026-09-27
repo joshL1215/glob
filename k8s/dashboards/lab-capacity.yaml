@@ -1,3 +1,6 @@
+# Loaded by the Grafana sidecar, which watches every namespace for ConfigMaps
+# carrying the grafana_dashboard label. Edit this file and push — anything
+# changed in the Grafana UI lives only in its PVC and dies on a lab rebuild.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -20,7 +23,7 @@ data:
       "version": 1,
       "refresh": "30s",
       "time": {
-        "from": "now-6h",
+        "from": "now-3h",
         "to": "now"
       },
       "templating": {
@@ -29,7 +32,7 @@ data:
       "panels": [
         {
           "type": "row",
-          "title": "General availability to run more applications",
+          "title": "Capacity",
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -41,8 +44,8 @@ data:
         },
         {
           "type": "stat",
-          "title": "Free to schedule \u2014 general workers",
-          "description": "Memory on lab-w1 + lab-w2 that nothing has reserved yet. This is the number that decides whether a new workload fits. glob and lab-cp-1 are excluded: both are tainted, so ordinary workloads cannot land there.",
+          "title": "Available worker memory",
+          "description": "Unreserved memory on lab-w1 and lab-w2. Decides whether a new workload fits. glob and lab-cp-1 are left out because both are tainted, so ordinary pods cannot land there.",
           "gridPos": {
             "h": 6,
             "w": 6,
@@ -102,8 +105,8 @@ data:
         },
         {
           "type": "bargauge",
-          "title": "Memory free to schedule, by node",
-          "description": "Allocatable minus everything already requested. Not the same as free memory: the scheduler only counts requests, so a node can be busy and still look empty here \u2014 which is exactly how lab-cp-1 lost its API server before system-reserved was set.",
+          "title": "Free memory by node",
+          "description": "Allocatable minus what pods have reserved. Not the same as unused memory \u2014 the scheduler only counts reservations.",
           "gridPos": {
             "h": 6,
             "w": 9,
@@ -168,8 +171,8 @@ data:
         },
         {
           "type": "bargauge",
-          "title": "CPU free to schedule, by node",
-          "description": "Cores not yet requested. CPU is compressible \u2014 exceeding it makes things slow, not dead \u2014 so this matters less than memory.",
+          "title": "Free CPU by node",
+          "description": "Cores not reserved. Overcommitting CPU makes things slow rather than killing them, so this matters less than memory.",
           "gridPos": {
             "h": 6,
             "w": 9,
@@ -234,7 +237,7 @@ data:
         },
         {
           "type": "row",
-          "title": "Memory details",
+          "title": "GPU",
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -246,13 +249,302 @@ data:
         },
         {
           "type": "stat",
-          "title": "glob, right now",
-          "description": "glob is both the hypervisor and a cluster node, so `kubectl top node glob` is misleading \u2014 it counts the VMs against the node. This splits the three real consumers. The VM figure is fixed: qemu claims its full allocation whether the guests are busy or idle.",
+          "title": "Available GPU memory",
+          "description": "Free VRAM on the RTX 3060. Separate from system memory \u2014 this is the 6 GB on the card, and it is what limits model size.",
+          "gridPos": {
+            "h": 5,
+            "w": 6,
+            "x": 0,
+            "y": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "DCGM_FI_DEV_FB_FREE"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "mbytes",
+              "decimals": 0,
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 1024
+                  },
+                  {
+                    "color": "green",
+                    "value": 2048
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto",
+            "graphMode": "area",
+            "colorMode": "value",
+            "justifyMode": "auto"
+          }
+        },
+        {
+          "type": "gauge",
+          "title": "GPU utilisation",
+          "description": "How busy the card is. Sits at 0 unless something is actually running on it.",
+          "gridPos": {
+            "h": 5,
+            "w": 6,
+            "x": 6,
+            "y": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "DCGM_FI_DEV_GPU_UTIL"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100,
+              "decimals": 0,
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "#8E8E8E",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true
+          }
+        },
+        {
+          "type": "stat",
+          "title": "GPU temperature",
+          "gridPos": {
+            "h": 5,
+            "w": 6,
+            "x": 12,
+            "y": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "DCGM_FI_DEV_GPU_TEMP"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "celsius",
+              "decimals": 0,
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 75
+                  },
+                  {
+                    "color": "red",
+                    "value": 85
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto",
+            "graphMode": "area",
+            "colorMode": "value",
+            "justifyMode": "auto"
+          }
+        },
+        {
+          "type": "stat",
+          "title": "GPU power",
+          "gridPos": {
+            "h": 5,
+            "w": 6,
+            "x": 18,
+            "y": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "DCGM_FI_DEV_POWER_USAGE"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "watt",
+              "decimals": 0,
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "#3274D9"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto",
+            "graphMode": "area",
+            "colorMode": "value",
+            "justifyMode": "auto"
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "GPU utilisation over time",
+          "gridPos": {
+            "h": 6,
+            "w": 24,
+            "x": 0,
+            "y": 13
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "DCGM_FI_DEV_GPU_UTIL",
+              "legendFormat": "utilisation"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100,
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "#3274D9"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 20,
+                "showPoints": "never",
+                "pointSize": 8,
+                "gradientMode": "none",
+                "lineInterpolation": "smooth",
+                "spanNulls": false
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": false,
+              "calcs": []
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          }
+        },
+        {
+          "type": "row",
+          "title": "glob memory",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 19
+          },
+          "collapsed": false,
+          "panels": []
+        },
+        {
+          "type": "stat",
+          "title": "Current",
+          "description": "glob is the hypervisor and a cluster node at once, so `kubectl top node glob` is misleading \u2014 it counts the VMs. These are the three real consumers. The VM figure is fixed: qemu claims its full allocation whether guests are busy or idle.",
           "gridPos": {
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 8
+            "y": 20
           },
           "datasource": {
             "type": "prometheus",
@@ -349,13 +641,13 @@ data:
         },
         {
           "type": "timeseries",
-          "title": "glob memory over time",
-          "description": "Same three consumers, stacked to the full 15 GiB. 'Available' includes reclaimable page cache, which is why the 'free' number elsewhere looks alarmingly small and does not matter.",
+          "title": "Over time",
+          "description": "Stacked to the full 15 GiB. 'Available' includes reclaimable cache, which is why the 'free' figure elsewhere looks small and does not matter.",
           "gridPos": {
             "h": 7,
             "w": 16,
             "x": 8,
-            "y": 8
+            "y": 20
           },
           "datasource": {
             "type": "prometheus",
@@ -461,12 +753,12 @@ data:
         },
         {
           "type": "row",
-          "title": "What is using it",
+          "title": "Usage",
           "gridPos": {
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 15
+            "y": 27
           },
           "collapsed": false,
           "panels": []
@@ -474,12 +766,12 @@ data:
         {
           "type": "table",
           "title": "Top pods by memory",
-          "description": "Actual working-set memory, not requests. A pod well above its request is a pod that will be killed first when a node runs short.",
+          "description": "Actual memory in use, not reservations. A pod well above its request is the first thing killed when a node runs short.",
           "gridPos": {
             "h": 11,
             "w": 24,
             "x": 0,
-            "y": 16
+            "y": 28
           },
           "datasource": {
             "type": "prometheus",
