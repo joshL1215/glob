@@ -1,0 +1,35 @@
+# Split out of kube-prometheus-stack so the CRDs exist before the operator
+# starts. The operator checks for them once at boot and permanently disables
+# the controllers whose CRDs are missing, which on a fresh install leaves the
+# Prometheus object with nobody watching it.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: prometheus-operator-crds
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-20"
+spec:
+  project: default
+
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: prometheus-operator-crds
+    targetRevision: 32.0.1
+    helm:
+      releaseName: prometheus-operator-crds
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+
+  syncPolicy:
+    automated:
+      # Deliberately no prune: these CRDs own every ServiceMonitor and the
+      # Prometheus object itself. Removing this app should not silently take
+      # the monitoring data with it.
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+      - CreateNamespace=true
