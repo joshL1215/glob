@@ -1,0 +1,569 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-lab-capacity
+  namespace: observability
+  labels:
+    grafana_dashboard: "1"
+  annotations:
+    grafana_folder: Lab
+data:
+  lab-capacity.json: |
+    {
+      "title": "Lab capacity",
+      "uid": "lab-capacity",
+      "tags": [
+        "lab"
+      ],
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30s",
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+      "templating": {
+        "list": []
+      },
+      "panels": [
+        {
+          "type": "row",
+          "title": "General availability to run more applications",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 0
+          },
+          "collapsed": false,
+          "panels": []
+        },
+        {
+          "type": "stat",
+          "title": "Free to schedule \u2014 general workers",
+          "description": "Memory on lab-w1 + lab-w2 that nothing has reserved yet. This is the number that decides whether a new workload fits. glob and lab-cp-1 are excluded: both are tainted, so ordinary workloads cannot land there.",
+          "gridPos": {
+            "h": 6,
+            "w": 6,
+            "x": 0,
+            "y": 1
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum(kube_node_status_allocatable{resource=\"memory\",node=~\"lab-w1|lab-w2\"} - on(node) group_left() sum by(node) (kube_pod_container_resource_requests{resource=\"memory\"}))"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "decimals": 2,
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 536870912
+                  },
+                  {
+                    "color": "green",
+                    "value": 1610612736
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto",
+            "graphMode": "area",
+            "colorMode": "value",
+            "justifyMode": "auto"
+          }
+        },
+        {
+          "type": "bargauge",
+          "title": "Memory free to schedule, by node",
+          "description": "Allocatable minus everything already requested. Not the same as free memory: the scheduler only counts requests, so a node can be busy and still look empty here \u2014 which is exactly how lab-cp-1 lost its API server before system-reserved was set.",
+          "gridPos": {
+            "h": 6,
+            "w": 9,
+            "x": 6,
+            "y": 1
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "kube_node_status_allocatable{resource=\"memory\"} - on(node) group_left() sum by(node) (kube_pod_container_resource_requests{resource=\"memory\"})",
+              "legendFormat": "{{node}}",
+              "instant": true
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "decimals": 2,
+              "min": 0,
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 268435456
+                  },
+                  {
+                    "color": "green",
+                    "value": 1073741824
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "displayMode": "gradient",
+            "orientation": "horizontal",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showUnfilled": true,
+            "minVizWidth": 8,
+            "minVizHeight": 16,
+            "valueMode": "color"
+          }
+        },
+        {
+          "type": "bargauge",
+          "title": "CPU free to schedule, by node",
+          "description": "Cores not yet requested. CPU is compressible \u2014 exceeding it makes things slow, not dead \u2014 so this matters less than memory.",
+          "gridPos": {
+            "h": 6,
+            "w": 9,
+            "x": 15,
+            "y": 1
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "kube_node_status_allocatable{resource=\"cpu\"} - on(node) group_left() sum by(node) (kube_pod_container_resource_requests{resource=\"cpu\"})",
+              "legendFormat": "{{node}}",
+              "instant": true
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "none",
+              "decimals": 2,
+              "min": 0,
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 0.5
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "displayMode": "gradient",
+            "orientation": "horizontal",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showUnfilled": true,
+            "minVizWidth": 8,
+            "minVizHeight": 16,
+            "valueMode": "color"
+          }
+        },
+        {
+          "type": "row",
+          "title": "Memory details",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 7
+          },
+          "collapsed": false,
+          "panels": []
+        },
+        {
+          "type": "stat",
+          "title": "glob, right now",
+          "description": "glob is both the hypervisor and a cluster node, so `kubectl top node glob` is misleading \u2014 it counts the VMs against the node. This splits the three real consumers. The VM figure is fixed: qemu claims its full allocation whether the guests are busy or idle.",
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 0,
+            "y": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "VMs + host OS",
+              "expr": "(node_memory_MemTotal_bytes and on(instance) node_uname_info{nodename=\"glob\"}) - (node_memory_MemAvailable_bytes and on(instance) node_uname_info{nodename=\"glob\"}) - scalar(sum(container_memory_working_set_bytes{node=\"glob\",container!=\"\"}))"
+            },
+            {
+              "refId": "B",
+              "legendFormat": "Kubernetes pods",
+              "expr": "sum(container_memory_working_set_bytes{node=\"glob\",container!=\"\"})"
+            },
+            {
+              "refId": "C",
+              "legendFormat": "Available",
+              "expr": "node_memory_MemAvailable_bytes and on(instance) node_uname_info{nodename=\"glob\"}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "decimals": 2,
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "text"
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "VMs + host OS"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "#3274D9"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Kubernetes pods"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "#E0752D"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Available"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "#8E8E8E"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto",
+            "graphMode": "none",
+            "colorMode": "value",
+            "orientation": "horizontal",
+            "justifyMode": "auto"
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "glob memory over time",
+          "description": "Same three consumers, stacked to the full 15 GiB. 'Available' includes reclaimable page cache, which is why the 'free' number elsewhere looks alarmingly small and does not matter.",
+          "gridPos": {
+            "h": 7,
+            "w": 16,
+            "x": 8,
+            "y": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "VMs + host OS",
+              "expr": "(node_memory_MemTotal_bytes and on(instance) node_uname_info{nodename=\"glob\"}) - (node_memory_MemAvailable_bytes and on(instance) node_uname_info{nodename=\"glob\"}) - scalar(sum(container_memory_working_set_bytes{node=\"glob\",container!=\"\"}))"
+            },
+            {
+              "refId": "B",
+              "legendFormat": "Kubernetes pods",
+              "expr": "sum(container_memory_working_set_bytes{node=\"glob\",container!=\"\"})"
+            },
+            {
+              "refId": "C",
+              "legendFormat": "Available",
+              "expr": "node_memory_MemAvailable_bytes and on(instance) node_uname_info{nodename=\"glob\"}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "min": 0,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 70,
+                "stacking": {
+                  "mode": "normal",
+                  "group": "A"
+                },
+                "showPoints": "never",
+                "pointSize": 8,
+                "gradientMode": "none",
+                "lineInterpolation": "smooth",
+                "spanNulls": false,
+                "axisSoftMin": 0
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "VMs + host OS"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "#3274D9"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Kubernetes pods"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "#E0752D"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Available"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "#8E8E8E"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true,
+              "calcs": []
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            }
+          }
+        },
+        {
+          "type": "row",
+          "title": "What is using it",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 15
+          },
+          "collapsed": false,
+          "panels": []
+        },
+        {
+          "type": "table",
+          "title": "Top pods by memory",
+          "description": "Actual working-set memory, not requests. A pod well above its request is a pod that will be killed first when a node runs short.",
+          "gridPos": {
+            "h": 11,
+            "w": 24,
+            "x": 0,
+            "y": 16
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "format": "table",
+              "instant": true,
+              "expr": "topk(15, sum by(node, namespace, pod) (container_memory_working_set_bytes{container!=\"\"}))"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true
+                },
+                "renameByName": {
+                  "Value": "Memory",
+                  "node": "Node",
+                  "namespace": "Namespace",
+                  "pod": "Pod"
+                }
+              }
+            },
+            {
+              "id": "sortBy",
+              "options": {
+                "fields": {},
+                "sort": [
+                  {
+                    "field": "Memory",
+                    "desc": true
+                  }
+                ]
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "decimals": 1,
+              "custom": {
+                "align": "auto",
+                "filterable": true
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Memory"
+                },
+                "properties": [
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "gauge",
+                      "mode": "gradient"
+                    }
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "continuous-BlYlRd"
+                    }
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 320
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "showHeader": true,
+            "footer": {
+              "show": false
+            }
+          }
+        }
+      ]
+    }
