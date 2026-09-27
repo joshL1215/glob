@@ -1,0 +1,63 @@
+# argo/argo-cd, chart 10.9.2
+
+# Read by ansible/playbooks/argocd.yml and k8s/apps/argo-cd.yaml
+# first one is for first time bootstrap and second is argo self managed
+# having two consumers for this ensures parity after handoff
+
+crds:
+  install: true
+  keep: true
+
+configs:
+  params:
+    server.insecure: true
+    reposerver.parallelism.limit: 1
+  cm:
+    timeout.reconciliation: 180s
+    resource.exclusions: |
+      - apiGroups:
+          - helm.cattle.io
+        kinds:
+          - HelmChart
+          - HelmChartConfig
+        clusters:
+          - "*"
+
+dex:
+  enabled: false
+notifications:
+  enabled: false
+
+applicationSet:
+  enabled: true
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+
+controller:
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+server:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+
+repoServer:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 192Mi
+
+redis:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+global:
+  tolerations: []
