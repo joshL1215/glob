@@ -1,0 +1,17 @@
+# nvdp/nvidia-device-plugin, chart 0.20.1
+
+runtimeClassName: nvidia
+
+# Single 6GB card advertised as 4, time-sliced compute with shared memory
+config:
+  default: default
+  map:
+    default: |-
+      version: v1
+      sharing:
+        timeSlicing:
+          renameByDefault: false
+          failRequestsGreaterThanOne: true
+          resources:
+            - name: nvidia.com/gpu
+              replicas: 4
