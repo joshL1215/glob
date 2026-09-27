@@ -1,13 +1,4 @@
-# Bootstrap only. Installs Argo CD once so that Argo CD can take over managing
-# itself (k8s/apps/argo-cd.yaml), then hands it the app-of-apps root.
-#
-# Deliberately `helm template | kubectl apply` rather than `helm install`: it
-# leaves no Helm release for Argo to fight over ownership with, and the chart
-# and values are the same ones k8s/apps/argo-cd.yaml renders, so the first
-# self-managed sync is a no-op rather than a churn of replacements.
-#
-# Re-running this is both idempotent and the documented recovery path for a
-# values change that breaks the controller that would otherwise roll it back.
+# ArgoCD first-time bootstrap playbook
 
 - name: Argo CD bootstrap
   hosts: gpu_host
@@ -43,8 +34,6 @@
       changed_when: "'unchanged' not in argocd_ns_apply.stdout"
 
     - name: Render and apply the Argo CD chart
-      # Server-side apply is required, not stylistic: the Application CRD is
-      # larger than the 262144-byte annotation client-side apply writes into.
       ansible.builtin.shell:
         cmd: >-
           set -o pipefail &&
