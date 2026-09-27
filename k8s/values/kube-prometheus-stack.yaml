@@ -1,0 +1,94 @@
+# prometheus-community/kube-prometheus-stack, chart 91.7.0
+
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeProxy:
+  enabled: false
+kubeEtcd:
+  enabled: false
+
+alertmanager:
+  enabled: false
+
+prometheus:
+  prometheusSpec:
+    retention: 7d
+    retentionSize: 6GB
+
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    probeSelectorNilUsesHelmValues: false
+    scrapeConfigSelectorNilUsesHelmValues: false
+
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        memory: 1Gi
+
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: local-path
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 8Gi
+
+prometheusOperator:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+
+kube-state-metrics:
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+
+prometheus-node-exporter:
+  tolerations:
+    - operator: Exists
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+
+grafana:
+  persistence:
+    enabled: true
+    storageClassName: local-path
+    size: 2Gi
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+
+  # Secret is generated once by ansible/playbooks/secrets.yml and read back with kubectl
+  admin:
+    existingSecret: grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
+
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      access: proxy
+      url: http://loki.observability.svc.cluster.local:3100
+      jsonData:
+        maxLines: 1000
+
+  sidecar:
+    dashboards:
+      enabled: true
+      searchNamespace: ALL
+      label: grafana_dashboard
+    datasources:
+      enabled: true
+      searchNamespace: ALL

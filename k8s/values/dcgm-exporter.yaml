@@ -1,0 +1,30 @@
+# gpu-helm-charts/dcgm-exporter, chart 4.8.4
+
+nodeSelector:
+  nvidia.com/gpu.present: "true"
+
+tolerations:
+  - key: nvidia.com/gpu
+    operator: Exists
+    effect: NoSchedule
+
+runtimeClassName: nvidia
+
+# Deliberately avoids requesting nvidia.com/gpu to save a replica
+# since this is purely exposing for metrics
+extraEnv:
+  - name: NVIDIA_VISIBLE_DEVICES
+    value: all
+  - name: NVIDIA_DRIVER_CAPABILITIES
+    value: utility
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 256Mi
+
+serviceMonitor:
+  enabled: true
+  interval: 30s
