@@ -1,6 +1,5 @@
 lab:
   vars:
-    lab_cidr: 10.77.0.0/24
     lab_domain: lab.internal
   children:
     servers:

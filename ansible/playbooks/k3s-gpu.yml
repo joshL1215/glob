@@ -46,6 +46,21 @@
       args:
         creates: /usr/local/bin/k3s
 
+    - name: Open the lab-facing ports glob needs as a node
+      community.general.ufw:
+        rule: allow
+        direction: in
+        interface: "{{ lab_bridge }}"
+        src: "{{ lab_cidr }}"
+        proto: "{{ item.proto }}"
+        port: "{{ item.port }}"
+      loop:
+        - { port: "10250", proto: tcp }   # API server -> kubelet
+        - { port: "8472", proto: udp }    # flannel VXLAN
+        - { port: "9100", proto: tcp }    # Prometheus -> node-exporter
+      loop_control:
+        label: "{{ item.port }}/{{ item.proto }}"
+
 - name: Cluster status
   hosts: servers
 
