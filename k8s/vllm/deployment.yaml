@@ -21,6 +21,10 @@ spec:
       labels:
         app.kubernetes.io/name: vllm
     spec:
+      # k8s injects VLLM_PORT=tcp://... for the Service named vllm, which vLLM
+      # reads as its own config and rejects.
+      enableServiceLinks: false
+
       nodeSelector:
         nvidia.com/gpu.present: "true"
 
