@@ -21,11 +21,41 @@
       args:
         creates: /usr/local/bin/k3s
 
+    - name: Declare server-side kubelet reservations
+      ansible.builtin.copy:
+        dest: /etc/rancher/k3s/config.yaml
+        mode: "0600"
+        content: |
+          # Managed by ansible/playbooks/k3s.yml — edits here are overwritten.
+          kubelet-arg:
+            - "system-reserved=cpu=300m,memory=1Gi"
+            - "kube-reserved=cpu=100m,memory=256Mi"
+      register: k3s_server_config
+
+    - name: Restart k3s to pick up the reservations
+      ansible.builtin.systemd_service:
+        name: k3s
+        state: restarted
+      when: k3s_server_config.changed
+
     - name: Wait for the API server
       ansible.builtin.wait_for:
         host: "{{ ansible_host }}"
         port: 6443
         timeout: 180
+
+    - name: Read the control plane's taints
+      ansible.builtin.command:
+        cmd: k3s kubectl get node {{ inventory_hostname }} -o jsonpath={.spec.taints}
+      changed_when: false
+      register: k3s_cp_taints
+
+    - name: Keep workloads off the control plane
+      ansible.builtin.command:
+        cmd: >-
+          k3s kubectl taint node {{ inventory_hostname }}
+          node-role.kubernetes.io/control-plane=true:NoSchedule
+      when: "'node-role.kubernetes.io/control-plane' not in k3s_cp_taints.stdout"
 
     - name: Read the node join token
       ansible.builtin.slurp:
